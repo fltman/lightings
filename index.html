@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+    <title>Lightings · live thunder map</title>
+  </head>
+  <body>
+    <div id="map"></div>
+    <canvas id="fx"></canvas>
+    <canvas id="globe"></canvas>
+
+    <header class="panel hud" id="hud">
+      <div class="brand">
+        <span class="bolt">⚡</span>
+        <div>
+          <h1>LIGHTINGS</h1>
+          <p class="sub">live global lightning · thunder shockwaves</p>
+        </div>
+      </div>
+      <dl class="stats">
+        <div><dt>source</dt><dd id="stat-source">connecting…</dd></div>
+        <div><dt>strikes / min</dt><dd id="stat-rate">—</dd></div>
+        <div><dt>total seen</dt><dd id="stat-total">0</dd></div>
+      </dl>
+    </header>
+
+    <div class="panel layers" id="layers">
+      <div class="toggles">
+        <button class="toggle" id="globe-toggle" aria-pressed="false"><span class="sw"></span> 🌐 Globe view</button>
+        <button class="toggle active" id="heat-toggle" aria-pressed="true"><span class="sw"></span> Heatmap</button>
+        <button class="toggle active" id="night-toggle" aria-pressed="true"><span class="sw"></span> Night side</button>
+        <button class="toggle active" id="quakes-toggle" aria-pressed="true"><span class="sw"></span> Earthquakes</button>
+        <button class="toggle" id="radar-toggle" aria-pressed="false"><span class="sw"></span> Radar</button>
+        <button class="toggle" id="cape-toggle" aria-pressed="false"><span class="sw"></span> Fuel (CAPE)</button>
+        <button class="toggle" id="cells-toggle" aria-pressed="false"><span class="sw"></span> Storm cells</button>
+        <button class="toggle" id="flights-toggle" aria-pressed="false"><span class="sw"></span> ✈ Flights</button>
+        <button class="toggle" id="fires-toggle" aria-pressed="false"><span class="sw"></span> 🔥 Fires</button>
+        <button class="toggle" id="desk-toggle" aria-pressed="false"><span class="sw"></span> 🤖 Storm Desk (AI)</button>
+        <button class="toggle" id="ask-toggle" aria-pressed="false"><span class="sw"></span> 🔮 Ask the Planet (AI)</button>
+        <button class="toggle" id="sound-toggle" aria-pressed="false"><span class="sw"></span> Thunder sound</button>
+      </div>
+      <p class="fuel-readout" id="fuel-readout" hidden></p>
+      <button class="locate" id="locate-btn">📍 Use my location</button>
+      <p class="note">
+        Rings expand at the real speed of sound — <strong>343 m/s</strong>; when a
+        ring reaches a place, that's when its thunder is heard there (≈ 3 s / km).
+        Turn on <strong>Thunder sound</strong> and zoom into a storm to hear it.
+        <strong>Click any strike</strong> to see the detector stations that located it.
+      </p>
+    </div>
+
+    <footer class="panel legend">
+      <span class="dot neg"></span> cloud-to-ground (−)
+      <span class="dot pos"></span> positive (+)
+      <span class="ring-key"></span> expanding ring = thunder wavefront
+    </footer>
+
+    <div class="panel ask" id="ask" hidden>
+      <div class="ask-head">
+        <span class="ask-title">🔮 Ask the Planet</span>
+        <button class="ask-clear" id="ask-clear" title="Clear chat">clear</button>
+      </div>
+      <div class="ask-log" id="ask-log">
+        <div class="msg assistant"><div class="bubble">Ask me about the live lightning — e.g. <em>"any lightning near Stockholm?"</em> or <em>"show me the most active storm."</em> I can fly the map there too.</div></div>
+      </div>
+      <div class="ask-row">
+        <input type="text" id="ask-input" placeholder="Ask the planet…" autocomplete="off" />
+        <button class="ask-send" id="ask-send" aria-label="Send">➤</button>
+      </div>
+    </div>
+
+    <button class="panel deskticker" id="deskticker" hidden>
+      <span class="desk-tag">🤖 STORM DESK</span>
+      <span class="desk-text" id="desk-text"></span>
+    </button>
+
+    <div class="panel radar-ctl" id="radar-ctl" hidden>
+      <span class="radar-time" id="radar-time">—</span>
+      <input type="range" id="radar-slider" min="0" max="0" value="0" />
+      <span class="radar-label">radar</span>
+    </div>
+
+    <div class="guardian" id="guardian" hidden></div>
+
+    <div class="conn" id="conn" hidden>reconnecting…</div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
