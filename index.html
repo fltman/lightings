@@ -39,10 +39,10 @@
         <button class="toggle" id="flights-toggle" aria-pressed="false"><span class="sw"></span> ✈ Flights</button>
         <button class="toggle" id="fires-toggle" aria-pressed="false"><span class="sw"></span> 🔥 Fires</button>
         <button class="toggle" id="desk-toggle" aria-pressed="false"><span class="sw"></span> 🤖 Storm Desk (AI)</button>
-        <button class="toggle" id="ask-toggle" aria-pressed="false"><span class="sw"></span> 🔮 Ask the Planet (AI)</button>
         <button class="toggle" id="sound-toggle" aria-pressed="false"><span class="sw"></span> Thunder sound</button>
         <button class="toggle" id="breathe-toggle" aria-pressed="false"><span class="sw"></span> 🎵 Earth Breathe</button>
       </div>
+      <button class="ask-open" id="ask-open">🔮 Ask the Planet</button>
       <button class="locate" id="locate-btn">📍 Use my location</button>
       <div class="actions">
         <button class="act" id="radio-toggle">📻 Radio</button>
@@ -65,7 +65,10 @@
     <div class="panel ask" id="ask" hidden>
       <div class="ask-head">
         <span class="ask-title">🔮 Ask the Planet</span>
-        <button class="ask-clear" id="ask-clear" title="Clear chat">clear</button>
+        <div class="ask-head-btns">
+          <button class="ask-clear" id="ask-clear" title="Clear chat">clear</button>
+          <button class="ask-close" id="ask-close" title="Close" aria-label="Close">✕</button>
+        </div>
       </div>
       <div class="ask-log" id="ask-log">
         <div class="msg assistant"><div class="bubble">Ask me about the live lightning — e.g. <em>"any lightning near Stockholm?"</em> or <em>"show me the most active storm."</em> I can fly the map there too.</div></div>

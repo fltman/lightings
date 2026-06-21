@@ -11,6 +11,10 @@
 
 * { box-sizing: border-box; }
 
+/* The `hidden` attribute must win over component `display` rules (e.g. panels
+   with display:flex), otherwise hidden=true never actually hides them. */
+[hidden] { display: none !important; }
+
 html, body {
   margin: 0;
   height: 100%;
@@ -236,11 +240,33 @@ body.radio .maplibregl-ctrl {
 }
 .ask-head { display: flex; align-items: center; justify-content: space-between; }
 .ask-title { font-size: 13px; font-weight: 700; }
+.ask-head-btns { display: flex; align-items: center; gap: 8px; }
 .ask-clear {
   font: inherit; font-size: 10px; text-transform: uppercase; letter-spacing: 1px;
   color: var(--ink-dim); background: none; border: none; cursor: pointer;
 }
 .ask-clear:hover { color: var(--ink); }
+.ask-close {
+  font: inherit; font-size: 13px; line-height: 1;
+  color: var(--ink-dim); background: none; border: none; cursor: pointer; padding: 2px 4px;
+}
+.ask-close:hover { color: var(--ink); }
+
+/* "Ask the Planet" opener button (it's a tool you open, not a map layer). */
+.ask-open {
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, #6a3fd6, #4a78ff);
+  border: 1px solid rgba(160, 140, 255, 0.4);
+  border-radius: 999px;
+  padding: 8px 14px;
+  cursor: pointer;
+  width: 100%;
+  transition: all 0.15s ease;
+}
+.ask-open:hover { box-shadow: 0 0 16px rgba(120, 100, 255, 0.5); }
 .ask-log {
   flex: 1;
   overflow-y: auto;

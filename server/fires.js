@@ -50,7 +50,9 @@ export function startFires(getBoxes, getCells, { log = console.log } = {}) {
     try {
       let all = []
       for (const b of boxes) {
-        const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${KEY}/VIIRS_SNPP_NRT/${b.w},${b.s},${b.e},${b.n}/1`
+        // day_range=2: FIRMS NRT data for the CURRENT UTC day isn't processed yet
+        // (hours of latency), so "last 1 day" is often empty — 2 days always has data.
+        const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${KEY}/VIIRS_SNPP_NRT/${b.w},${b.s},${b.e},${b.n}/2`
         const r = await fetch(url)
         if (!r.ok) throw new Error(`FIRMS ${r.status}`)
         all = all.concat(parseCsv(await r.text()))

@@ -367,10 +367,8 @@ const askInput = el('ask-input')
 const askLog = el('ask-log')
 const askHistory = []                 // [{role, content}]
 const askIntro = askLog.innerHTML
-wireToggle('ask-toggle', false, (on) => {
-  askPanel.hidden = !on
-  if (on) askInput.focus()
-})
+el('ask-open').addEventListener('click', () => { askPanel.hidden = false; askInput.focus() })
+el('ask-close').addEventListener('click', () => { askPanel.hidden = true })
 function runAction(a) {
   if (a.type === 'fly_to') map.flyTo({ center: [a.lon, a.lat], zoom: a.zoom || 6 })
   else if (a.type === 'drop_pin') { guardian.setPin(a.lat, a.lon); sendView() }
