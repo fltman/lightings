@@ -15,7 +15,6 @@ export default defineConfig({
       },
       // Backend HTTP routes the frontend fetches (radar frames, CAPE grid, health).
       '/radar': { target: 'http://localhost:8088', changeOrigin: true },
-      '/cape': { target: 'http://localhost:8088', changeOrigin: true },
       '/aurora': { target: 'http://localhost:8088', changeOrigin: true },
       '/ask': { target: 'http://localhost:8088', changeOrigin: true },
       '/health': { target: 'http://localhost:8088', changeOrigin: true },

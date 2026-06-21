@@ -10,12 +10,10 @@ import { Guardian } from './guardian.js'
 import { Globe } from './globe.js'
 import { drawQuake } from './quakes.js'
 import { RadarLayer } from './radar.js'
-import { CapeLayer } from './cape.js'
 import { AuroraLayer } from './aurora.js'
 import { drawCells } from './cellview.js'
 import { drawPlanes } from './aircraftview.js'
 import { drawFire } from './firesview.js'
-import { DryRadar } from './dryradar.js'
 import { EarthBreathe } from './earthbreathe.js'
 import { marked } from 'marked'
 marked.setOptions({ breaks: true })
@@ -136,32 +134,15 @@ let fires = []                    // active fire detections (FIRMS)
 let showFires = false
 
 const radar = new RadarLayer(map)
-const cape = new CapeLayer(map)
 const aurora = new AuroraLayer(map)
 let showAurora = false
-const dryRadar = new DryRadar()
-let showDry = false
 const breathe = new EarthBreathe()
 let breatheActive = false
-let dryWin = []                   // epoch times of recent dry strikes
-let dryRefresh = null
-const fuelWin = []                // rolling window of recent strikes' over-fuel flags
 map.on('load', () => {
   radar.load().then((ok) => { if (ok) wireRadarScrubber() })
-  cape.load()
-  setInterval(() => cape.load(), 10 * 60000)   // refresh the fuel field
   aurora.load()
   setInterval(() => aurora.load(), 5 * 60000)  // refresh the auroral oval
 })
-
-// Flag a strike as dry lightning: no radar echo beneath it AND real convective
-// fuel (CAPE) — the wildfire-ignition signature. Mutates the strike's `dry` flag.
-function markDry(s) {
-  if (!showDry || !dryRadar.ready) return
-  const c = cape.capeAt(s.lat, s.lon)
-  s.dry = c != null && c >= 500 && !dryRadar.hasEcho(s.lat, s.lon)
-  if (s.dry) dryWin.push(s.time || Date.now())
-}
 
 // ---- Effect engines -------------------------------------------------------
 const fx = new StrikeFx()
@@ -441,35 +422,6 @@ async function submitAsk() {
 askInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitAsk() })
 el('ask-send').addEventListener('click', submitAsk)
 el('ask-clear').addEventListener('click', () => { askHistory.length = 0; askLog.innerHTML = askIntro })
-wireToggle('cape-toggle', false, (on) => {
-  cape.setVisible(on)
-  const out = el('fuel-readout')
-  if (out) out.hidden = !on
-})
-wireToggle('dry-toggle', false, (on) => {
-  showDry = on
-  el('dry-readout').hidden = !on
-  if (on) {
-    dryRadar.load()
-    if (!dryRefresh) dryRefresh = setInterval(() => { if (showDry) dryRadar.load() }, 10 * 60000)
-  }
-})
-setInterval(() => {
-  const out = el('dry-readout')
-  if (!out || out.hidden) return
-  if (!dryRadar.ready) { out.textContent = 'loading radar…'; return }
-  const cut = Date.now() - 15 * 60000
-  dryWin = dryWin.filter((t) => t >= cut)
-  out.textContent = `🔥 ${dryWin.length} dry strike${dryWin.length === 1 ? '' : 's'} (no rain) · last 15 min`
-}, 2000)
-setInterval(() => {
-  const out = el('fuel-readout')
-  if (!out || out.hidden) return
-  if (!fuelWin.length || !cape.cells.length) { out.textContent = 'fuel: gathering data…'; return }
-  const pct = Math.round((100 * fuelWin.reduce((a, b) => a + b, 0)) / fuelWin.length)
-  const base = Math.round(cape.hiFrac * 100)
-  out.textContent = `${pct}% of recent strikes over high fuel · map baseline ${base}%`
-}, 2000)
 wireToggle('radar-toggle', false, (on) => {
   radar.setVisible(on)
   const ctl = el('radar-ctl')
@@ -637,7 +589,6 @@ map.on('moveend', () => { clearTimeout(viewTimer); viewTimer = setTimeout(() => 
 function seedRecent(list, serverNow, now) {
   for (const s of list || []) {
     const ageMs = Math.max(0, serverNow - s.time)
-    markDry(s)
     fx.add(s, now - ageMs, { silent: true })   // seeded strikes never play thunder
     heat.add(s.lon, s.lat, s.time)
   }
@@ -669,15 +620,9 @@ function connect() {
     } else if (msg.t === 'snapshot') {
       seedRecent(msg.recent, serverNow, now)
     } else if (msg.t === 'strike') {
-      markDry(msg.s)
       if (breatheActive) breathe.tick(msg.s.lat, msg.s.pol)
       fx.add(msg.s, now)
       heat.add(msg.s.lon, msg.s.lat, msg.s.time || Date.now())
-      if (cape.cells.length) {
-        const c = cape.capeAt(msg.s.lat, msg.s.lon)
-        fuelWin.push(c != null && c >= 1000 ? 1 : 0)
-        if (fuelWin.length > 400) fuelWin.shift()
-      }
     } else if (msg.t === 'stats') {
       setStats({ mode: msg.mode, perMin: msg.perMin, total: msg.total })
       if (breatheActive) breathe.setActivity(msg.perMin || 0)

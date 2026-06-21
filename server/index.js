@@ -13,7 +13,6 @@ import { WebSocketServer, WebSocket } from 'ws'
 import { startSim } from './sim.js'
 import { startBlitzortung } from './blitzortung.js'
 import { startQuakes, getQuakes, startRadar, getRadar, startAurora, getAurora } from './feeds.js'
-import { startCape, getCape } from './cape.js'
 import { ingest as ingestCell, startCells } from './cells.js'
 import { startAircraft, getPlanes, pokeAircraft } from './aircraft.js'
 import { startFires, getFires, pokeFires } from './fires.js'
@@ -37,7 +36,6 @@ if (process.env.NODE_ENV === 'production') {
 
 app.get('/health', (_req, res) => res.json({ ok: true, mode: activeMode, total }))
 app.get('/radar', (_req, res) => res.json(getRadar() || { host: '', past: [], nowcast: [] }))
-app.get('/cape', (_req, res) => res.json(getCape()))
 app.get('/aurora', (_req, res) => res.json({ aurora: getAurora() }))
 app.post('/ask', async (req, res) => {
   // Accept a conversation (preferred) or a single question for back-compat.
@@ -228,7 +226,6 @@ startQuakes((quakes) => {
   }
 })
 startRadar()
-startCape()
 startAurora()
 
 // Storm-cell tracker: broadcast per-client (filtered to each viewport).

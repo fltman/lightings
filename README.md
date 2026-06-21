@@ -73,9 +73,6 @@ npm start          # serves dist/ + the /live socket on :8088
   fastest needle on a planetary vital-signs monitor.
 - **Radar** (RainViewer) — animated precipitation radar under the strikes with a
   time scrubber (past → nowcast); watch the electrical core lead the rain.
-- **Fuel — CAPE** (Open-Meteo) — convective-energy "fuel field" beneath the
-  strikes; storms ignite where it pooled. Shows % of recent strikes over high
-  fuel against the map baseline so the number stays honest.
 - **Storm cells** — server-side tracker (gridded clustering + velocity) turns the
   dot-firehose into named, moving cells with drift cones and rising/falling state.
   Neutral IDs only — never a storm-type label.

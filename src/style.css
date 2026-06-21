@@ -222,20 +222,6 @@ body.radio .maplibregl-ctrl {
   color: var(--ink-dim);
 }
 .layers .note strong { color: var(--accent); font-weight: 700; }
-.fuel-readout {
-  margin: 0;
-  font-size: 10.5px;
-  line-height: 1.4;
-  color: #ffcf8a;
-  font-variant-numeric: tabular-nums;
-}
-.dry-readout {
-  margin: 0;
-  font-size: 10.5px;
-  line-height: 1.4;
-  color: #ff8a5a;
-  font-variant-numeric: tabular-nums;
-}
 
 /* Ask the Planet (chat) ---------------------------------------------- */
 .ask {
