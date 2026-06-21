@@ -87,17 +87,25 @@ export class HeatLayer {
     if (this.points.length > MAX_POINTS) {
       this.points.splice(0, this.points.length - MAX_POINTS)
     }
+    this._dirty = true
   }
 
   // Recompute decayed weights, drop expired points, and push to the GPU.
-  // Call on a timer (~1–2 s) — not every animation frame.
+  // Call on a timer (~1–2 s) — not every animation frame. Skips the (allocation-
+  // heavy) rebuild + full GPU upload when nothing changed, but still refreshes
+  // periodically so weights keep decaying.
   tick() {
-    const cutoff = Date.now() - HEAT_WINDOW_MS
+    const now = Date.now()
+    const cutoff = now - HEAT_WINDOW_MS
     if (this.points.length && this.points[0].t < cutoff) {
       this.points = this.points.filter((p) => p.t >= cutoff)
+      this._dirty = true
     }
+    if (!this._dirty && now - (this._lastSet || 0) < 8000) return
     const src = this.map.getSource(SOURCE)
     if (src) src.setData(this._fc())
+    this._dirty = false
+    this._lastSet = now
   }
 
   setVisible(on) {

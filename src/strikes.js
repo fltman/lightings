@@ -40,38 +40,6 @@ function haversineM(aLat, aLon, bLat, bLon) {
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)))
 }
 
-// Geometric dilution of precision → an error-ellipse SHAPE (orientation +
-// eccentricity) from the detector-station geometry. Uses SCREEN-space bearings
-// (via the supplied project fn) so it is correct at any latitude and under the
-// globe. This is dimensionless GEOMETRY confidence — NOT an error in metres
-// (no timing variance is on the wire). Returns null if degenerate.
-function gdop(strike, project) {
-  const sig = strike.sig
-  if (!sig || sig.length < 2) return null
-  const o = project([strike.lon, strike.lat])
-  let mxx = 0, mxy = 0, myy = 0, k = 0
-  for (const st of sig) {
-    const p = project([st.lo, st.la])
-    let dx = p.x - o.x, dy = p.y - o.y
-    const len = Math.hypot(dx, dy)
-    if (len < 1e-6) continue
-    dx /= len; dy /= len
-    mxx += dx * dx; mxy += dx * dy; myy += dy * dy; k++
-  }
-  if (k < 2) return null
-  // Eigenvalues of the 2×2 information matrix M=[[mxx,mxy],[mxy,myy]].
-  const tr = mxx + myy
-  const disc = Math.sqrt(Math.max(0, (tr * tr) / 4 - (mxx * myy - mxy * mxy)))
-  const l1 = tr / 2 + disc        // larger
-  const l2 = tr / 2 - disc        // smaller
-  if (l1 <= 1e-9) return null
-  // Position is least constrained along the eigenvector of the SMALLER
-  // eigenvalue → that is the ellipse's major axis.
-  const ecc = Math.sqrt(Math.max(0, 1 - l2 / l1))
-  const ang = Math.abs(mxy) > 1e-9 ? Math.atan2(l2 - mxx, mxy) : (mxx <= myy ? 0 : Math.PI / 2)
-  return { ang, ecc }
-}
-
 export class StrikeFx {
   constructor() {
     this.strikes = []
@@ -90,17 +58,20 @@ export class StrikeFx {
   }
 
   add(strike, born, opts = {}) {
+    const toR = Math.PI / 180
     this.strikes.push({
-      id: ++this._id,
+      sid: strike.id,                    // server id, for the reveal round-trip
       lat: strike.lat,
       lon: strike.lon,
       pol: strike.pol || 0,
       e: typeof strike.e === 'number' ? strike.e : 0.4,
-      sig: strike.sig || null,
+      gd: strike.gd || null,             // precomputed confidence-ellipse {a, e}
       mcg: strike.mcg ?? null,
       time: strike.time || Date.now(),   // epoch ms
       born,                              // performance.now() timeline
       fired: !!opts.silent,              // seeded strikes never play thunder
+      _sin: Math.sin(strike.lat * toR),  // cached for the globe far-side cull
+      _cos: Math.cos(strike.lat * toR),
     })
     if (this.strikes.length > MAX_ACTIVE) {
       this.strikes.splice(0, this.strikes.length - MAX_ACTIVE)
@@ -137,7 +108,7 @@ export class StrikeFx {
     let best = null, bestD = maxPx * maxPx
     for (let i = this.strikes.length - 1; i >= 0; i--) {
       const s = this.strikes[i]
-      if (!s.sig || s.sig.length < 2) continue
+      if (!s.gd) continue                 // only multilaterated strikes are revealable
       const p = map.project([s.lon, s.lat])
       const dx = p.x - x, dy = p.y - y
       const d = dx * dx + dy * dy
@@ -225,17 +196,14 @@ export class StrikeFx {
           ctx.lineWidth = 2
           ctx.stroke()
         }
-        // confidence halo: an error-ellipse from station geometry (shape only,
-        // never metres) — round = well-surrounded, smeared = stations one-sided.
-        if (this.showHalo) {
-          const gd = gdop(s, (ll) => map.project(ll))
-          if (gd) {
-            ctx.beginPath()
-            ctx.ellipse(p.x, p.y, 13 * (1 + gd.ecc * 1.1), 13 * (1 - gd.ecc * 0.6), gd.ang, 0, Math.PI * 2)
-            ctx.strokeStyle = `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${0.38 * f})`
-            ctx.lineWidth = 1
-            ctx.stroke()
-          }
+        // confidence halo: a precomputed error-ellipse (shape only, never metres)
+        // — round = well-surrounded, smeared = stations one-sided.
+        if (this.showHalo && s.gd) {
+          ctx.beginPath()
+          ctx.ellipse(p.x, p.y, 13 * (1 + s.gd.e * 1.1), 13 * (1 - s.gd.e * 0.6), -s.gd.a, 0, Math.PI * 2)
+          ctx.strokeStyle = `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${0.38 * f})`
+          ctx.lineWidth = 1
+          ctx.stroke()
         }
       }
     }
@@ -247,4 +215,4 @@ export class StrikeFx {
   get activeCount() { return this.strikes.length }
 }
 
-export { haversineM, metersPerPixel, gdop }
+export { haversineM, metersPerPixel }

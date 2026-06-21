@@ -213,8 +213,8 @@ export class Globe {
       fx.maybeThunder(s, ringMeters)
 
       // Cosine of angular distance from the globe centre; ≤ 0 ⇒ far side.
-      const cosd = sinC * Math.sin(s.lat * toR) +
-        cosC * Math.cos(s.lat * toR) * Math.cos((s.lon - clon) * toR)
+      // Uses the strike's cached sin/cos(lat) so we don't recompute trig per frame.
+      const cosd = sinC * s._sin + cosC * s._cos * Math.cos((s.lon - clon) * toR)
       if (cosd <= 0) continue
 
       const p = this.proj([s.lon, s.lat])

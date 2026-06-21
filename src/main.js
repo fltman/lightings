@@ -149,10 +149,46 @@ function frame() {
 }
 requestAnimationFrame(frame)
 
-// Click a strike to reveal how the network located it.
+// ---- Click: earthquake details, else strike reveal ------------------------
+const escapeHtml = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+const quakePopup = new maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: '250px', className: 'quake-popup' })
+function timeAgo(ms) {
+  const s = Math.max(0, (Date.now() - ms) / 1000)
+  if (s < 90) return `${Math.round(s)} s ago`
+  const m = s / 60; if (m < 90) return `${Math.round(m)} min ago`
+  const h = m / 60; if (h < 36) return `${Math.round(h)} h ago`
+  return `${Math.round(h / 24)} d ago`
+}
+function pickQuake(x, y) {
+  let best = null, bestD = 16 * 16
+  for (const q of quakes) {
+    const p = map.project([q.lon, q.lat])
+    const dx = p.x - x, dy = p.y - y, d = dx * dx + dy * dy
+    if (d < bestD) { bestD = d; best = q }
+  }
+  return best
+}
 map.on('click', (ev) => {
+  // Earthquakes first (sparse + informative); otherwise reveal a strike. The
+  // station list is no longer streamed per strike (perf) — ask the relay by id.
+  if (showQuakes) {
+    const q = pickQuake(ev.point.x, ev.point.y)
+    if (q) {
+      const depth = typeof q.depth === 'number' ? `${q.depth.toFixed(0)} km deep` : 'depth n/a'
+      const mag = typeof q.mag === 'number' ? q.mag.toFixed(1) : '?'
+      quakePopup.setLngLat([q.lon, q.lat]).setHTML(
+        `<div class="qp-mag">M ${mag}</div>` +
+        `<div class="qp-place">${escapeHtml(q.place || 'Unknown location')}</div>` +
+        `<div class="qp-meta">${depth} · ${timeAgo(q.time)}</div>` +
+        `<a class="qp-link" href="https://earthquake.usgs.gov/earthquakes/eventpage/${encodeURIComponent(q.id)}" target="_blank" rel="noopener">USGS details ↗</a>`
+      ).addTo(map)
+      return
+    }
+  }
   const s = fx.pick(map, ev.point.x, ev.point.y, 22)
-  if (s) reveal.start(s, performance.now())
+  if (s && s.sid != null && activeWs && activeWs.readyState === WebSocket.OPEN) {
+    activeWs.send(JSON.stringify({ t: 'reveal', id: s.sid }))
+  }
 })
 
 // ---- HUD ------------------------------------------------------------------
@@ -260,7 +296,6 @@ function runAction(a) {
   if (a.type === 'fly_to') map.flyTo({ center: [a.lon, a.lat], zoom: a.zoom || 6 })
   else if (a.type === 'drop_pin') { guardian.setPin(a.lat, a.lon); sendView() }
 }
-const escapeHtml = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
 function addBubble(role, html, thinking) {
   const wrap = document.createElement('div')
   wrap.className = `msg ${role}`
@@ -456,6 +491,8 @@ function connect() {
       fires = msg.fires || []
     } else if (msg.t === 'narration') {
       showNarration(msg)
+    } else if (msg.t === 'reveal') {
+      reveal.start({ lat: msg.lat, lon: msg.lon, mcg: msg.mcg, sig: msg.sig }, performance.now())
     }
   }
 

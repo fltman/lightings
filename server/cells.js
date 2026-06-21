@@ -8,6 +8,7 @@
 // "where the activity is heading", a count trend, not a severity forecast.
 
 const WINDOW_MS = 25 * 60 * 1000   // strike history kept for tracking
+const MAX_STRIKES = 50000          // hard count cap (the firehose can be unbounded)
 const TICK_MS = 5000
 const BIN_DEG = 0.7                // ~70 km grid for clustering
 const MIN_PTS = 5                  // min strikes to form a cell
@@ -30,6 +31,8 @@ function haversineKm(aLat, aLon, bLat, bLon) {
 export function ingest(s) {
   if (typeof s.lat === 'number' && typeof s.lon === 'number') {
     strikes.push({ lat: s.lat, lon: s.lon, time: s.time || Date.now() })
+    // Guard against an extreme firehose between 5 s ticks.
+    if (strikes.length > MAX_STRIKES + 20000) strikes.splice(0, strikes.length - MAX_STRIKES)
   }
 }
 
@@ -143,6 +146,7 @@ export function startCells(onTick, { log = console.log } = {}) {
     const now = Date.now()
     const cut = now - WINDOW_MS
     while (strikes.length && strikes[0].time < cut) strikes.shift()
+    if (strikes.length > MAX_STRIKES) strikes.splice(0, strikes.length - MAX_STRIKES)
     try { onTick(step(now)) } catch (e) { log(`[cells] ${e.message}`) }
   }, TICK_MS)
   return () => clearInterval(timer)

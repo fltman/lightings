@@ -54,8 +54,8 @@ export function startAircraft(getBoxes, getCells, { log = console.log } = {}) {
     const boxes = getBoxes()
     if (!boxes.length) { planes = []; return }
     const cells = getCells()
+    const now = Date.now()
     try {
-      const now = Date.now()
       const out = []
       const seen = new Set()
       for (const box of boxes) {
@@ -82,10 +82,11 @@ export function startAircraft(getBoxes, getCells, { log = console.log } = {}) {
           out.push({ icao, lat, lon, track, dev, trail: tr.map((q) => [q.lat, q.lon]) })
         }
       }
-      for (const [icao, tr] of trails) if (now - tr[tr.length - 1].t > 5 * 60000) trails.delete(icao)
       planes = out
     } catch (e) {
       log(`[aircraft] ${e.message}`)   // rate-limited / offline → keep last, degrade quietly
+    } finally {
+      for (const [icao, tr] of trails) if (now - tr[tr.length - 1].t > 5 * 60000) trails.delete(icao)
     }
   }
 

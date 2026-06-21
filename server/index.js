@@ -72,6 +72,38 @@ function inBbox(bbox, lat, lon) {
   return lon >= w || lon <= e
 }
 
+let strikeId = 0
+
+// Compress detector-station geometry into a confidence-ellipse {a, e} (major-axis
+// angle in the local east/north frame, eccentricity) so the client can draw the
+// GDOP halo WITHOUT us shipping all the stations. Computed once per strike here,
+// not per frame on the client.
+function computeGd(sig, lat, lon) {
+  const toR = Math.PI / 180, cosLat = Math.cos(lat * toR)
+  let mxx = 0, mxy = 0, myy = 0, k = 0
+  for (const st of sig) {
+    let dx = (st.lo - lon) * cosLat, dy = st.la - lat
+    const len = Math.hypot(dx, dy)
+    if (len < 1e-9) continue
+    dx /= len; dy /= len
+    mxx += dx * dx; mxy += dx * dy; myy += dy * dy; k++
+  }
+  if (k < 2) return null
+  const tr = mxx + myy
+  const disc = Math.sqrt(Math.max(0, (tr * tr) / 4 - (mxx * myy - mxy * mxy)))
+  const l1 = tr / 2 + disc, l2 = tr / 2 - disc
+  if (l1 <= 1e-9) return null
+  const e = Math.sqrt(Math.max(0, 1 - l2 / l1))
+  const a = Math.abs(mxy) > 1e-9 ? Math.atan2(l2 - mxx, mxy) : (mxx <= myy ? 0 : Math.PI / 2)
+  return { a: +a.toFixed(3), e: +e.toFixed(3) }
+}
+
+// Lean wire shape — everything EXCEPT the heavy sig[] (up to 60 stations), which
+// stays server-side in `recent` and is fetched on demand via {t:'reveal', id}.
+function leanOf(s) {
+  return { id: s.id, lat: s.lat, lon: s.lon, time: s.time, pol: s.pol, region: s.region, e: s.e, mcg: s.mcg, gd: s.gd, mode: s.mode }
+}
+
 function pushRecent(strike) {
   recent.push(strike)
   const cutoff = Date.now() - RECENT_MS
@@ -82,9 +114,11 @@ function pushRecent(strike) {
 
 function broadcast(strike) {
   total++
-  pushRecent(strike)
+  strike.id = ++strikeId
+  if (strike.sig && strike.sig.length >= 2 && !strike.gd) strike.gd = computeGd(strike.sig, strike.lat, strike.lon)
+  pushRecent(strike)          // full strike (with sig) retained for the reveal
   ingestCell(strike)
-  const payload = JSON.stringify({ t: 'strike', s: strike })
+  const payload = JSON.stringify({ t: 'strike', s: leanOf(strike) })
   for (const client of wss.clients) {
     if (client.readyState === WebSocket.OPEN && inBbox(client._bbox, strike.lat, strike.lon)) {
       client.send(payload)
@@ -105,11 +139,16 @@ wss.on('connection', (ws) => {
     try { msg = JSON.parse(raw.toString()) } catch { return }
     if (msg.t === 'view' && Array.isArray(msg.bbox) && msg.bbox.length === 4) {
       ws._bbox = msg.bbox.map(Number)
-      const snap = recent.filter((s) => inBbox(ws._bbox, s.lat, s.lon))
+      const snap = recent.filter((s) => inBbox(ws._bbox, s.lat, s.lon)).map(leanOf)
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ t: 'snapshot', recent: snap, serverTime: Date.now() }))
         const cs = latestCells.filter((c) => inBbox(ws._bbox, c.lat, c.lon))
         ws.send(JSON.stringify({ t: 'cells', cells: cs }))
+      }
+    } else if (msg.t === 'reveal' && typeof msg.id === 'number') {
+      const s = recent.find((r) => r.id === msg.id)   // full sig kept server-side
+      if (s && s.sig && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ t: 'reveal', id: s.id, lat: s.lat, lon: s.lon, mcg: s.mcg, sig: s.sig }))
       }
     } else if (msg.t === 'flights') {
       ws._flights = !!msg.on   // gate OpenSky polling to clients actually watching

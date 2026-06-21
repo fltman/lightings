@@ -46,5 +46,17 @@ export function drawQuake(ctx, x, y, q, bloomAge) {
     ctx.lineWidth = 2
     ctx.stroke()
   }
+
+  // Label the significant ones so they aren't anonymous (click any for details).
+  if (mag >= 4.5) {
+    ctx.globalCompositeOperation = 'source-over'
+    ctx.font = '700 10px ui-sans-serif, system-ui, sans-serif'
+    const label = 'M' + mag.toFixed(1)
+    ctx.fillStyle = 'rgba(6,10,18,0.65)'
+    const tw = ctx.measureText(label).width
+    ctx.fillRect(x + baseR + 2, y - 7, tw + 6, 14)
+    ctx.fillStyle = `rgba(${r},${g},${b},1)`
+    ctx.fillText(label, x + baseR + 5, y + 3)
+  }
   ctx.restore()
 }

@@ -360,6 +360,27 @@ html, body {
   50% { box-shadow: 0 0 26px rgba(255, 90, 60, 0.6); }
 }
 
+/* Earthquake detail popup -------------------------------------------- */
+.quake-popup .maplibregl-popup-content {
+  background: rgba(12, 16, 26, 0.92);
+  border: 1px solid var(--panel-brd);
+  border-radius: 12px;
+  color: var(--ink);
+  padding: 12px 28px 12px 14px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55);
+}
+.quake-popup .maplibregl-popup-close-button { color: var(--ink-dim); font-size: 17px; padding: 0 7px; }
+.quake-popup .maplibregl-popup-close-button:hover { color: var(--ink); background: none; }
+.quake-popup .maplibregl-popup-anchor-top .maplibregl-popup-tip { border-bottom-color: rgba(12, 16, 26, 0.92); }
+.quake-popup .maplibregl-popup-anchor-bottom .maplibregl-popup-tip { border-top-color: rgba(12, 16, 26, 0.92); }
+.quake-popup .maplibregl-popup-anchor-left .maplibregl-popup-tip { border-right-color: rgba(12, 16, 26, 0.92); }
+.quake-popup .maplibregl-popup-anchor-right .maplibregl-popup-tip { border-left-color: rgba(12, 16, 26, 0.92); }
+.qp-mag { font-size: 18px; font-weight: 800; color: #ffd27a; letter-spacing: 0.5px; }
+.qp-place { font-size: 12.5px; margin-top: 3px; line-height: 1.35; }
+.qp-meta { font-size: 11px; color: var(--ink-dim); margin-top: 5px; font-variant-numeric: tabular-nums; }
+.qp-link { display: inline-block; margin-top: 8px; font-size: 11px; color: var(--neg); text-decoration: none; }
+.qp-link:hover { text-decoration: underline; }
+
 /* Legend ------------------------------------------------------------- */
 .legend {
   bottom: 16px;

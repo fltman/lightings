@@ -31,22 +31,30 @@ export class NightSide {
 
   render(ctx, map, w, h, date) {
     if (!this.enabled) return
-    const { dec, lon: subLon } = subsolar(date)
-    const tanDec = Math.tan(dec * RAD)
-    const centerLon = map.getCenter().lng
 
-    // Terminator latitude as a function of longitude (solar zenith = 90°).
-    const pts = []
-    for (let i = 0; i <= 180; i++) {
-      const lon = centerLon - 180 + (i * 360) / 180
-      const latT = Math.atan(-Math.cos((lon - subLon) * RAD) / tanDec) / RAD
-      pts.push(map.project([lon, Math.max(-85, Math.min(85, latT))]))
+    // The terminator only moves with the map view or (slowly) with the clock, so
+    // recompute the projected point array only on view change or ~1 s drift —
+    // not the ~180 map.project() calls every single 60fps frame.
+    const now = date.getTime()
+    const c = map.getCenter()
+    const vk = `${c.lng.toFixed(2)},${c.lat.toFixed(2)},${map.getZoom().toFixed(2)},${w}x${h}`
+    if (!this._pts || vk !== this._vk || now - (this._t || 0) > 1000) {
+      const { dec, lon: subLon } = subsolar(date)
+      const tanDec = Math.tan(dec * RAD)
+      const pts = []
+      for (let i = 0; i <= 180; i++) {
+        const lon = c.lng - 180 + (i * 360) / 180
+        const latT = Math.atan(-Math.cos((lon - subLon) * RAD) / tanDec) / RAD
+        pts.push(map.project([lon, Math.max(-85, Math.min(85, latT))]))
+      }
+      this._pts = pts
+      // Night is the hemisphere away from the sun: sun north (dec>0) → dark south.
+      this._edgeY = dec > 0 ? h + 10 : -10
+      this._vk = vk
+      this._t = now
     }
-
-    // Night is the hemisphere away from the sun. With the sun north (dec>0) the
-    // dark hemisphere lies south → close the fill along the bottom edge; else top.
-    const nightSouth = dec > 0
-    const edgeY = nightSouth ? h + 10 : -10
+    const pts = this._pts
+    const edgeY = this._edgeY
 
     ctx.save()
     ctx.globalCompositeOperation = 'source-over'
