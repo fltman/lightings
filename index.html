@@ -33,7 +33,9 @@
         <button class="toggle active" id="quakes-toggle" aria-pressed="true"><span class="sw"></span> Earthquakes</button>
         <button class="toggle" id="radar-toggle" aria-pressed="false"><span class="sw"></span> Radar</button>
         <button class="toggle" id="cape-toggle" aria-pressed="false"><span class="sw"></span> Fuel (CAPE)</button>
+        <button class="toggle" id="dry-toggle" aria-pressed="false"><span class="sw"></span> 🔥 Dry lightning</button>
         <button class="toggle" id="cells-toggle" aria-pressed="false"><span class="sw"></span> Storm cells</button>
+        <button class="toggle" id="flares-toggle" aria-pressed="false"><span class="sw"></span> ⚡ Flare-ups</button>
         <button class="toggle" id="flights-toggle" aria-pressed="false"><span class="sw"></span> ✈ Flights</button>
         <button class="toggle" id="fires-toggle" aria-pressed="false"><span class="sw"></span> 🔥 Fires</button>
         <button class="toggle" id="desk-toggle" aria-pressed="false"><span class="sw"></span> 🤖 Storm Desk (AI)</button>
@@ -41,7 +43,12 @@
         <button class="toggle" id="sound-toggle" aria-pressed="false"><span class="sw"></span> Thunder sound</button>
       </div>
       <p class="fuel-readout" id="fuel-readout" hidden></p>
+      <p class="dry-readout" id="dry-readout" hidden></p>
       <button class="locate" id="locate-btn">📍 Use my location</button>
+      <div class="actions">
+        <button class="act" id="radio-toggle">📻 Radio</button>
+        <button class="act" id="clip-btn">● Clip 6s</button>
+      </div>
       <p class="note">
         Rings expand at the real speed of sound — <strong>343 m/s</strong>; when a
         ring reaches a place, that's when its thunder is heard there (≈ 3 s / km).
@@ -82,6 +89,7 @@
     </div>
 
     <div class="guardian" id="guardian" hidden></div>
+    <div class="radio-hint" id="radio-hint" hidden></div>
 
     <div class="conn" id="conn" hidden>reconnecting…</div>
 

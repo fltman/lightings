@@ -26,6 +26,7 @@ const MAX_ACTIVE = 4000          // hard cap; oldest culled beyond this
 
 const NEG = [143, 208, 255]      // cyan-white  (negative cloud-to-ground)
 const POS = [255, 210, 122]      // warm        (positive)
+const DRY = [255, 95, 45]        // ember-red   (dry lightning — no rain, fire risk)
 
 // Web-mercator ground resolution: metres per CSS pixel at a latitude + zoom.
 function metersPerPixel(lat, zoom) {
@@ -66,6 +67,7 @@ export class StrikeFx {
       pol: strike.pol || 0,
       e: typeof strike.e === 'number' ? strike.e : 0.4,
       gd: strike.gd || null,             // precomputed confidence-ellipse {a, e}
+      dry: !!strike.dry,                 // dry lightning (no rain echo + fuel)
       mcg: strike.mcg ?? null,
       time: strike.time || Date.now(),   // epoch ms
       born,                              // performance.now() timeline
@@ -141,7 +143,7 @@ export class StrikeFx {
         continue
       }
 
-      const rgb = s.pol > 0 ? POS : NEG
+      const rgb = s.dry ? DRY : (s.pol > 0 ? POS : NEG)
       const e = s.e
 
       // ---- EMBER: lingering dot ------------------------------------

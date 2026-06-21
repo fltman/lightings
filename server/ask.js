@@ -10,7 +10,7 @@
 
 const SYS = `You are "Ask the Planet", the assistant for a live global lightning map.
 Answer the user's question in 1-3 short sentences, using the TOOLS to get every real number and location — never guess counts, places, or energy.
-The strike buffer holds only the LAST ~5 MINUTES, globally; if asked about longer history, say you can only see the last few minutes.
+You can answer about LIGHTNING/STORMS (last ~5 minutes, globally) AND about EARTHQUAKES (USGS, last ~24 hours) via query_quakes. Be clear about which window applies; if asked about lightning history beyond a few minutes, say you can only see the last few minutes.
 Rules: never invent a place name (use geocode); never say kA or a storm type (no "supercell"/"severe"); only describe storm motion from storm_approach, never otherwise predict.
 When the question is about a place, geocode it, fly_to it, then query_strikes there. Use drop_pin for "is it heading toward me / my area" style questions.
 Reply conversationally and concisely. Light markdown is welcome (bold for key numbers, short bullet lists) but keep it tight — usually 1-3 sentences.`
@@ -20,6 +20,7 @@ const TOOLS = [
   { type: 'function', function: { name: 'query_strikes', description: 'Lightning stats over the last few minutes for an area. Give either center+radiusKm, or a bbox, or nothing for the whole globe.', parameters: { type: 'object', properties: { centerLat: { type: 'number' }, centerLon: { type: 'number' }, radiusKm: { type: 'number' }, west: { type: 'number' }, south: { type: 'number' }, east: { type: 'number' }, north: { type: 'number' }, sinceMin: { type: 'number', description: 'lookback minutes, max 5' } } } } },
   { type: 'function', function: { name: 'top_cells', description: 'The most active tracked storm cells right now.', parameters: { type: 'object', properties: { limit: { type: 'number' } } } } },
   { type: 'function', function: { name: 'storm_approach', description: 'Is any tracked storm cell heading toward this point, and the ETA.', parameters: { type: 'object', properties: { lat: { type: 'number' }, lon: { type: 'number' } }, required: ['lat', 'lon'] } } },
+  { type: 'function', function: { name: 'query_quakes', description: 'Recent EARTHQUAKES (USGS, last ~24h), returned strongest-first. Optionally filter by minMag or an area (centerLat/centerLon/radiusKm).', parameters: { type: 'object', properties: { limit: { type: 'number' }, minMag: { type: 'number' }, centerLat: { type: 'number' }, centerLon: { type: 'number' }, radiusKm: { type: 'number' } } } } },
   { type: 'function', function: { name: 'fly_to', description: 'Move the map camera to a location.', parameters: { type: 'object', properties: { lat: { type: 'number' }, lon: { type: 'number' }, zoom: { type: 'number' } }, required: ['lat', 'lon'] } } },
   { type: 'function', function: { name: 'drop_pin', description: "Drop the user's location pin at a point (enables the safety guardian there).", parameters: { type: 'object', properties: { lat: { type: 'number' }, lon: { type: 'number' } }, required: ['lat', 'lon'] } } },
 ]
@@ -79,6 +80,22 @@ export async function ask(history, ctx, { log = console.log } = {}) {
         .map((c) => ({ id: c.id, lat: +c.lat.toFixed(2), lon: +c.lon.toFixed(2), strikesPerMin: c.rate, trend: c.state, spanKm: c.spreadKm }))
     }
     if (name === 'storm_approach') return approach(cells, args.lat, args.lon)
+    if (name === 'query_quakes') {
+      let qs = (ctx.quakes || []).filter((q) => typeof q.mag === 'number')
+      if (typeof args.minMag === 'number') qs = qs.filter((q) => q.mag >= args.minMag)
+      if (typeof args.centerLat === 'number' && typeof args.radiusKm === 'number') {
+        qs = qs.filter((q) => haversineKm(args.centerLat, args.centerLon, q.lat, q.lon) <= args.radiusKm)
+      }
+      qs.sort((a, b) => b.mag - a.mag)
+      return {
+        total: qs.length, windowHours: 24,
+        quakes: qs.slice(0, args.limit || 5).map((q) => ({
+          mag: q.mag, place: q.place, depthKm: q.depth,
+          lat: +q.lat.toFixed(2), lon: +q.lon.toFixed(2),
+          agoMin: Math.round((Date.now() - q.time) / 60000),
+        })),
+      }
+    }
     if (name === 'query_strikes') {
       const sinceMs = Math.min(5, args.sinceMin || 5) * 60000
       const cut = Date.now() - sinceMs

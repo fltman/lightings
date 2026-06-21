@@ -14,6 +14,7 @@ import { CapeLayer } from './cape.js'
 import { drawCells } from './cellview.js'
 import { drawPlanes } from './aircraftview.js'
 import { drawFire } from './firesview.js'
+import { DryRadar } from './dryradar.js'
 import { marked } from 'marked'
 marked.setOptions({ breaks: true })
 
@@ -47,6 +48,7 @@ const map = new maplibregl.Map({
   minZoom: 1,
   maxZoom: 12,
   dragRotate: false,
+  preserveDrawingBuffer: true,   // lets "Clip" composite the WebGL canvas
   attributionControl: { compact: true },
 })
 map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right')
@@ -61,6 +63,54 @@ let quakes = []
 let showQuakes = true
 let cells = []                    // tracked storm cells
 let showCells = false
+let showFlares = false            // flare-up sentinel
+const flares = []                 // active flare-up pins {id, lat, lon, rate, born}
+const flaredIds = new Set()       // cells currently flared (avoid re-pinning)
+
+// Detect sudden intensifications from the cell stream: a cell that has just gone
+// "rising" with a high rate gets a pulsing alert pin for ~75 s.
+function updateFlares(list) {
+  const now = performance.now()
+  const present = new Set()
+  for (const c of list) {
+    present.add(c.id)
+    const isFlare = c.state === 'rising' && c.rate >= 20
+    if (isFlare && !flaredIds.has(c.id)) {
+      flaredIds.add(c.id)
+      flares.push({ id: c.id, lat: c.lat, lon: c.lon, rate: c.rate, born: now })
+    } else if (!isFlare) {
+      flaredIds.delete(c.id)        // can flare again if it re-intensifies later
+    }
+  }
+  for (const id of [...flaredIds]) if (!present.has(id)) flaredIds.delete(id)
+  for (let i = flares.length - 1; i >= 0; i--) if (now - flares[i].born > 75000) flares.splice(i, 1)
+}
+
+function drawFlares(ctx, now) {
+  for (const fl of flares) {
+    const p = map.project([fl.lon, fl.lat])
+    const age = (now - fl.born) / 1000
+    ctx.save()
+    ctx.globalCompositeOperation = 'lighter'
+    for (let k = 0; k < 2; k++) {
+      const ph = (age * 1.1 + k * 0.5) % 1
+      ctx.beginPath()
+      ctx.arc(p.x, p.y, 8 + ph * 30, 0, Math.PI * 2)
+      ctx.strokeStyle = `rgba(255,140,60,${(1 - ph) * 0.6})`
+      ctx.lineWidth = 2
+      ctx.stroke()
+    }
+    ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI * 2)
+    ctx.fillStyle = 'rgba(255,185,95,0.95)'; ctx.fill()
+    ctx.globalCompositeOperation = 'source-over'
+    ctx.font = '700 11px ui-sans-serif, system-ui, sans-serif'
+    const label = `⚡ FLARE-UP · ${fl.rate}/min`
+    const tw = ctx.measureText(label).width
+    ctx.fillStyle = 'rgba(40,12,8,0.8)'; ctx.fillRect(p.x + 10, p.y - 20, tw + 10, 17)
+    ctx.fillStyle = 'rgba(255,185,100,1)'; ctx.fillText(label, p.x + 15, p.y - 8)
+    ctx.restore()
+  }
+}
 let planes = []                   // aircraft near active cells
 let showFlights = false
 let fires = []                    // active fire detections (FIRMS)
@@ -68,12 +118,25 @@ let showFires = false
 
 const radar = new RadarLayer(map)
 const cape = new CapeLayer(map)
+const dryRadar = new DryRadar()
+let showDry = false
+let dryWin = []                   // epoch times of recent dry strikes
+let dryRefresh = null
 const fuelWin = []                // rolling window of recent strikes' over-fuel flags
 map.on('load', () => {
   radar.load().then((ok) => { if (ok) wireRadarScrubber() })
   cape.load()
   setInterval(() => cape.load(), 10 * 60000)   // refresh the fuel field
 })
+
+// Flag a strike as dry lightning: no radar echo beneath it AND real convective
+// fuel (CAPE) — the wildfire-ignition signature. Mutates the strike's `dry` flag.
+function markDry(s) {
+  if (!showDry || !dryRadar.ready) return
+  const c = cape.capeAt(s.lat, s.lon)
+  s.dry = c != null && c >= 500 && !dryRadar.hasEcho(s.lat, s.lon)
+  if (s.dry) dryWin.push(s.time || Date.now())
+}
 
 // ---- Effect engines -------------------------------------------------------
 const fx = new StrikeFx()
@@ -144,6 +207,7 @@ function frame() {
     }
     if (showCells && cells.length) drawCells(ctx, cells, map, w, h)
     if (showFlights && planes.length) drawPlanes(ctx, planes, map, w, h)
+    if (showFlares && flares.length) drawFlares(ctx, now)
   }
   requestAnimationFrame(frame)
 }
@@ -241,6 +305,7 @@ wireToggle('sound-toggle', false, (on) => {
 })
 wireToggle('quakes-toggle', true, (on) => { showQuakes = on })
 wireToggle('cells-toggle', false, (on) => { showCells = on })
+wireToggle('flares-toggle', false, (on) => { showFlares = on })
 wireToggle('flights-toggle', false, (on) => {
   showFlights = on
   if (activeWs && activeWs.readyState === WebSocket.OPEN) {
@@ -348,6 +413,22 @@ wireToggle('cape-toggle', false, (on) => {
   const out = el('fuel-readout')
   if (out) out.hidden = !on
 })
+wireToggle('dry-toggle', false, (on) => {
+  showDry = on
+  el('dry-readout').hidden = !on
+  if (on) {
+    dryRadar.load()
+    if (!dryRefresh) dryRefresh = setInterval(() => { if (showDry) dryRadar.load() }, 10 * 60000)
+  }
+})
+setInterval(() => {
+  const out = el('dry-readout')
+  if (!out || out.hidden) return
+  if (!dryRadar.ready) { out.textContent = 'loading radar…'; return }
+  const cut = Date.now() - 15 * 60000
+  dryWin = dryWin.filter((t) => t >= cut)
+  out.textContent = `🔥 ${dryWin.length} dry strike${dryWin.length === 1 ? '' : 's'} (no rain) · last 15 min`
+}, 2000)
 setInterval(() => {
   const out = el('fuel-readout')
   if (!out || out.hidden) return
@@ -392,6 +473,90 @@ el('locate-btn').addEventListener('click', () => {
   }
 })
 
+// ---- Radio Mode: hands-off cinema that flies to the loudest storms --------
+let radioActive = false
+let radioTimer = null
+let radioIdx = 0
+let radioStartedAt = 0
+const radioBtn = el('radio-toggle')
+const radioHint = el('radio-hint')
+function radioStep() {
+  if (!radioActive) return
+  const targets = cells.slice().sort((a, b) => b.rate - a.rate).slice(0, 6)
+  if (targets.length) {
+    const t = targets[radioIdx % targets.length]
+    radioIdx++
+    map.easeTo({ center: [t.lon, t.lat], zoom: 5.4, duration: 3500 })
+    radioHint.textContent = `📻 RADIO · ⚡ ${t.rate} strikes/min · move mouse to exit`
+  } else {
+    radioHint.textContent = '📻 RADIO · waiting for active storms · move mouse to exit'
+  }
+  radioTimer = setTimeout(radioStep, 24000)
+}
+function startRadio() {
+  radioActive = true
+  radioStartedAt = performance.now()
+  document.body.classList.add('radio')
+  radioHint.hidden = false
+  radioBtn.classList.add('active')
+  sendView()            // subscribe globally so targets aren't limited to one view
+  radioIdx = 0
+  radioStep()
+}
+function stopRadio() {
+  radioActive = false
+  clearTimeout(radioTimer)
+  document.body.classList.remove('radio')
+  radioHint.hidden = true
+  radioBtn.classList.remove('active')
+  sendView()            // restore the real viewport subscription
+}
+radioBtn.addEventListener('click', () => (radioActive ? stopRadio() : startRadio()))
+window.addEventListener('mousemove', () => {
+  if (radioActive && performance.now() - radioStartedAt > 1500) stopRadio()
+})
+
+// ---- Clip It: record ~6 s of the live canvas to a downloadable WebM --------
+let clipping = false
+const clipBtn = el('clip-btn')
+clipBtn.addEventListener('click', () => {
+  if (clipping || !window.MediaRecorder) return
+  const mime = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].find((m) => MediaRecorder.isTypeSupported(m))
+  if (!mime) return
+  clipping = true
+  clipBtn.classList.add('active')
+  const cv = document.createElement('canvas')
+  cv.width = canvas.width
+  cv.height = canvas.height
+  const cctx = cv.getContext('2d')
+  let raf = 0
+  const composite = () => {
+    cctx.clearRect(0, 0, cv.width, cv.height)
+    if (globe.active) {
+      cctx.drawImage(globe.canvas, 0, 0, cv.width, cv.height)
+    } else {
+      cctx.drawImage(map.getCanvas(), 0, 0, cv.width, cv.height)
+      cctx.drawImage(canvas, 0, 0, cv.width, cv.height)
+    }
+    raf = requestAnimationFrame(composite)
+  }
+  composite()
+  const chunks = []
+  const rec = new MediaRecorder(cv.captureStream(30), { mimeType: mime })
+  rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data) }
+  rec.onstop = () => {
+    cancelAnimationFrame(raf)
+    const url = URL.createObjectURL(new Blob(chunks, { type: 'video/webm' }))
+    const a = document.createElement('a')
+    a.href = url; a.download = 'lightings-clip.webm'; a.click()
+    setTimeout(() => URL.revokeObjectURL(url), 8000)
+    clipping = false
+    clipBtn.classList.remove('active')
+  }
+  rec.start()
+  setTimeout(() => rec.stop(), 6000)
+})
+
 // ---- Live feed ------------------------------------------------------------
 function wsUrl() {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws'
@@ -419,8 +584,8 @@ function currentBbox() {
 
 function sendView() {
   if (activeWs && activeWs.readyState === WebSocket.OPEN) {
-    // Globe mode shows the whole world → request the global feed.
-    const bbox = globe.active ? [-180, -85, 180, 85] : currentBbox()
+    // Globe + radio mode show the whole world → request the global feed.
+    const bbox = (globe.active || radioActive) ? [-180, -85, 180, 85] : currentBbox()
     activeWs.send(JSON.stringify({ t: 'view', bbox }))
   }
 }
@@ -433,6 +598,7 @@ map.on('moveend', () => { clearTimeout(viewTimer); viewTimer = setTimeout(sendVi
 function seedRecent(list, serverNow, now) {
   for (const s of list || []) {
     const ageMs = Math.max(0, serverNow - s.time)
+    markDry(s)
     fx.add(s, now - ageMs, { silent: true })   // seeded strikes never play thunder
     heat.add(s.lon, s.lat, s.time)
   }
@@ -463,6 +629,7 @@ function connect() {
     } else if (msg.t === 'snapshot') {
       seedRecent(msg.recent, serverNow, now)
     } else if (msg.t === 'strike') {
+      markDry(msg.s)
       fx.add(msg.s, now)
       heat.add(msg.s.lon, msg.s.lat, msg.s.time || Date.now())
       if (cape.cells.length) {
@@ -485,6 +652,7 @@ function connect() {
       quakes = next
     } else if (msg.t === 'cells') {
       cells = msg.cells || []
+      updateFlares(cells)
     } else if (msg.t === 'planes') {
       planes = msg.planes || []
     } else if (msg.t === 'fires') {

@@ -169,6 +169,45 @@ html, body {
   transition: all 0.15s ease;
 }
 .locate:hover { background: rgba(143, 208, 255, 0.22); }
+.actions { display: flex; gap: 7px; width: 100%; }
+.act {
+  flex: 1;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--panel-brd);
+  border-radius: 999px;
+  padding: 7px 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.act:hover { background: rgba(255, 255, 255, 0.1); }
+.act.active { color: #06121f; background: var(--neg); }
+
+/* Radio mode — strip the UI to ambient cinema. */
+.radio-hint {
+  position: absolute;
+  bottom: 26px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #ffd27a;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.85);
+  pointer-events: none;
+}
+body.radio .panel,
+body.radio .guardian,
+body.radio .conn,
+body.radio .maplibregl-ctrl {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: opacity 0.6s ease;
+}
 .layers .note {
   margin: 0;
   font-size: 11px;
@@ -181,6 +220,13 @@ html, body {
   font-size: 10.5px;
   line-height: 1.4;
   color: #ffcf8a;
+  font-variant-numeric: tabular-nums;
+}
+.dry-readout {
+  margin: 0;
+  font-size: 10.5px;
+  line-height: 1.4;
+  color: #ff8a5a;
   font-variant-numeric: tabular-nums;
 }
 

@@ -27,6 +27,7 @@ const EMBER_LIFE_MS = 40000
 
 const NEG = [143, 208, 255]
 const POS = [255, 210, 122]
+const DRY = [255, 95, 45]
 
 export class Globe {
   constructor(canvas) {
@@ -219,7 +220,7 @@ export class Globe {
 
       const p = this.proj([s.lon, s.lat])
       if (!p) continue
-      const rgb = s.pol > 0 ? POS : NEG
+      const rgb = s.dry ? DRY : (s.pol > 0 ? POS : NEG)
       const e = s.e
       const limb = Math.min(1, cosd * 6)   // fade in over the last ~10° to the edge
 

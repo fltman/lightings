@@ -43,7 +43,7 @@ app.post('/ask', async (req, res) => {
   let history = Array.isArray(req.body?.messages) ? req.body.messages : null
   if (!history && req.body?.question) history = [{ role: 'user', content: req.body.question }]
   if (!history || !history.length) return res.json({ text: 'Ask me something about the live lightning.', toolTrace: [], actions: [] })
-  res.json(await ask(history, { recent, cells: latestCells }))
+  res.json(await ask(history, { recent, cells: latestCells, quakes: getQuakes() }))
 })
 
 const server = http.createServer(app)
