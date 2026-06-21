@@ -4,9 +4,39 @@
 
 let quakes = []
 let radar = null
+let aurora = []
 
 export function getQuakes() { return quakes }
 export function getRadar() { return radar }
+export function getAurora() { return aurora }
+
+// NOAA SWPC OVATION auroral oval — probability the aurora is visible on a global
+// grid. We keep the meaningful high-latitude points so the client can draw the
+// glowing oval over the night hemisphere. Free, no key, ~5-min cadence.
+export function startAurora({ log = console.log } = {}) {
+  async function poll() {
+    try {
+      const r = await fetch('https://services.swpc.noaa.gov/json/ovation_aurora_latest.json')
+      const j = await r.json()
+      const out = []
+      for (const c of j.coordinates || []) {
+        const val = c[2]
+        if (val < 8) continue                        // skip near-zero probability
+        const lat = c[1]
+        if (Math.abs(lat) < 40) continue             // aurora is polar
+        const lon = c[0] > 180 ? c[0] - 360 : c[0]
+        out.push({ lat, lon, val })
+      }
+      aurora = out
+      log(`[aurora] ${out.length} active cells`)
+    } catch (e) {
+      log(`[aurora] ${e.message}`)
+    }
+  }
+  poll()
+  const t = setInterval(poll, 5 * 60000)
+  return () => clearInterval(t)
+}
 
 export function startQuakes(onUpdate, { log = console.log } = {}) {
   async function poll() {

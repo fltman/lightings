@@ -12,7 +12,7 @@ import express from 'express'
 import { WebSocketServer, WebSocket } from 'ws'
 import { startSim } from './sim.js'
 import { startBlitzortung } from './blitzortung.js'
-import { startQuakes, getQuakes, startRadar, getRadar } from './feeds.js'
+import { startQuakes, getQuakes, startRadar, getRadar, startAurora, getAurora } from './feeds.js'
 import { startCape, getCape } from './cape.js'
 import { ingest as ingestCell, startCells } from './cells.js'
 import { startAircraft, getPlanes, pokeAircraft } from './aircraft.js'
@@ -38,6 +38,7 @@ if (process.env.NODE_ENV === 'production') {
 app.get('/health', (_req, res) => res.json({ ok: true, mode: activeMode, total }))
 app.get('/radar', (_req, res) => res.json(getRadar() || { host: '', past: [], nowcast: [] }))
 app.get('/cape', (_req, res) => res.json(getCape()))
+app.get('/aurora', (_req, res) => res.json({ aurora: getAurora() }))
 app.post('/ask', async (req, res) => {
   // Accept a conversation (preferred) or a single question for back-compat.
   let history = Array.isArray(req.body?.messages) ? req.body.messages : null
@@ -128,6 +129,7 @@ function broadcast(strike) {
 
 wss.on('connection', (ws) => {
   ws._bbox = null   // until the client reports its viewport, send it everything
+  ws._pid = Math.random().toString(36).slice(2, 8)   // anonymous presence id
   ws.send(JSON.stringify({ t: 'hello', mode: activeMode, serverTime: Date.now() }))
   const q = getQuakes()
   if (q.length) ws.send(JSON.stringify({ t: 'quakes', quakes: q }))
@@ -158,9 +160,21 @@ wss.on('connection', (ws) => {
     } else if (msg.t === 'fires') {
       ws._fires = !!msg.on
       if (ws._fires) pokeFires()
+    } else if (msg.t === 'presence' && typeof msg.lon === 'number' && typeof msg.lat === 'number') {
+      ws._center = { lon: msg.lon, lat: msg.lat }   // map-view centre, not a real location
     }
   })
 })
+
+// Storm Ghosts: broadcast where other viewers have centred their map (anonymous).
+setInterval(() => {
+  const all = [...wss.clients].filter((c) => c._center && c.readyState === WebSocket.OPEN)
+    .map((c) => ({ pid: c._pid, lon: c._center.lon, lat: c._center.lat }))
+  for (const client of wss.clients) {
+    if (client.readyState !== WebSocket.OPEN) continue
+    client.send(JSON.stringify({ t: 'presence', viewers: all.filter((p) => p.pid !== client._pid) }))
+  }
+}, 3000)
 
 // Periodically push live stats (rate, source) to all clients for the HUD.
 setInterval(() => {
@@ -215,6 +229,7 @@ startQuakes((quakes) => {
 })
 startRadar()
 startCape()
+startAurora()
 
 // Storm-cell tracker: broadcast per-client (filtered to each viewport).
 let latestCells = []

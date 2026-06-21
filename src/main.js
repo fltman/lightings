@@ -11,10 +11,12 @@ import { Globe } from './globe.js'
 import { drawQuake } from './quakes.js'
 import { RadarLayer } from './radar.js'
 import { CapeLayer } from './cape.js'
+import { AuroraLayer } from './aurora.js'
 import { drawCells } from './cellview.js'
 import { drawPlanes } from './aircraftview.js'
 import { drawFire } from './firesview.js'
 import { DryRadar } from './dryradar.js'
+import { EarthBreathe } from './earthbreathe.js'
 import { marked } from 'marked'
 marked.setOptions({ breaks: true })
 
@@ -66,6 +68,23 @@ let showCells = false
 let showFlares = false            // flare-up sentinel
 const flares = []                 // active flare-up pins {id, lat, lon, rate, born}
 const flaredIds = new Set()       // cells currently flared (avoid re-pinning)
+let viewers = []                  // other people watching (anonymous map centres)
+
+// Storm Ghosts: faint markers where other viewers have centred their map.
+function drawGhosts(ctx, now, w, h) {
+  const pulse = 0.5 + 0.5 * Math.sin(now / 600)
+  for (const v of viewers) {
+    const p = map.project([v.lon, v.lat])
+    if (p.x < 0 || p.x > w || p.y < 0 || p.y > h) continue
+    ctx.save()
+    ctx.globalCompositeOperation = 'lighter'
+    ctx.beginPath(); ctx.arc(p.x, p.y, 6 + pulse * 4, 0, Math.PI * 2)
+    ctx.strokeStyle = `rgba(185,165,255,${0.25 + pulse * 0.2})`; ctx.lineWidth = 1.5; ctx.stroke()
+    ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, Math.PI * 2)
+    ctx.fillStyle = 'rgba(205,185,255,0.7)'; ctx.fill()
+    ctx.restore()
+  }
+}
 
 // Detect sudden intensifications from the cell stream: a cell that has just gone
 // "rising" with a high rate gets a pulsing alert pin for ~75 s.
@@ -118,8 +137,12 @@ let showFires = false
 
 const radar = new RadarLayer(map)
 const cape = new CapeLayer(map)
+const aurora = new AuroraLayer(map)
+let showAurora = false
 const dryRadar = new DryRadar()
 let showDry = false
+const breathe = new EarthBreathe()
+let breatheActive = false
 let dryWin = []                   // epoch times of recent dry strikes
 let dryRefresh = null
 const fuelWin = []                // rolling window of recent strikes' over-fuel flags
@@ -127,6 +150,8 @@ map.on('load', () => {
   radar.load().then((ok) => { if (ok) wireRadarScrubber() })
   cape.load()
   setInterval(() => cape.load(), 10 * 60000)   // refresh the fuel field
+  aurora.load()
+  setInterval(() => aurora.load(), 5 * 60000)  // refresh the auroral oval
 })
 
 // Flag a strike as dry lightning: no radar echo beneath it AND real convective
@@ -180,6 +205,7 @@ function frame() {
     globe.night = nightside.enabled
     globe.quakes = showQuakes ? quakes : []
     globe.fires = showFires ? fires : []
+    globe.aurora = showAurora ? aurora.points : []
     globe.render(now, new Date())
     fx.cull(now)                                // keep the buffer bounded (render does this in flat mode)
   } else {
@@ -208,6 +234,7 @@ function frame() {
     if (showCells && cells.length) drawCells(ctx, cells, map, w, h)
     if (showFlights && planes.length) drawPlanes(ctx, planes, map, w, h)
     if (showFlares && flares.length) drawFlares(ctx, now)
+    if (viewers.length) drawGhosts(ctx, now, w, h)
   }
   requestAnimationFrame(frame)
 }
@@ -303,7 +330,13 @@ wireToggle('sound-toggle', false, (on) => {
     thunder.disable()
   }
 })
+wireToggle('breathe-toggle', false, (on) => {
+  breatheActive = on
+  if (on) breathe.enable(); else breathe.disable()
+  sendView()            // global feed so you hear the whole planet
+})
 wireToggle('quakes-toggle', true, (on) => { showQuakes = on })
+wireToggle('aurora-toggle', false, (on) => { showAurora = on; aurora.setVisible(on) })
 wireToggle('cells-toggle', false, (on) => { showCells = on })
 wireToggle('flares-toggle', false, (on) => { showFlares = on })
 wireToggle('flights-toggle', false, (on) => {
@@ -584,14 +617,20 @@ function currentBbox() {
 
 function sendView() {
   if (activeWs && activeWs.readyState === WebSocket.OPEN) {
-    // Globe + radio mode show the whole world → request the global feed.
-    const bbox = (globe.active || radioActive) ? [-180, -85, 180, 85] : currentBbox()
+    // Globe / radio / Earth Breathe show or sonify the whole world → global feed.
+    const bbox = (globe.active || radioActive || breatheActive) ? [-180, -85, 180, 85] : currentBbox()
     activeWs.send(JSON.stringify({ t: 'view', bbox }))
   }
 }
 
+function sendPresence() {
+  if (activeWs && activeWs.readyState === WebSocket.OPEN) {
+    const c = map.getCenter()
+    activeWs.send(JSON.stringify({ t: 'presence', lon: c.lng, lat: c.lat }))
+  }
+}
 let viewTimer = null
-map.on('moveend', () => { clearTimeout(viewTimer); viewTimer = setTimeout(sendView, 250) })
+map.on('moveend', () => { clearTimeout(viewTimer); viewTimer = setTimeout(() => { sendView(); sendPresence() }, 250) })
 
 // Backdate seeded strikes by their real age so old ones show as faint embers and
 // very recent ones still flash. Feed both the FX engine and the heatmap.
@@ -613,6 +652,7 @@ function connect() {
     backoff = 800
     connToast.hidden = true
     sendView()   // report our viewport → relay replies with a filtered snapshot
+    sendPresence()
     if (showFlights) ws.send(JSON.stringify({ t: 'flights', on: true }))
     if (showFires) ws.send(JSON.stringify({ t: 'fires', on: true }))
     if (showDesk) ws.send(JSON.stringify({ t: 'desk', on: true }))
@@ -630,6 +670,7 @@ function connect() {
       seedRecent(msg.recent, serverNow, now)
     } else if (msg.t === 'strike') {
       markDry(msg.s)
+      if (breatheActive) breathe.tick(msg.s.lat, msg.s.pol)
       fx.add(msg.s, now)
       heat.add(msg.s.lon, msg.s.lat, msg.s.time || Date.now())
       if (cape.cells.length) {
@@ -639,6 +680,7 @@ function connect() {
       }
     } else if (msg.t === 'stats') {
       setStats({ mode: msg.mode, perMin: msg.perMin, total: msg.total })
+      if (breatheActive) breathe.setActivity(msg.perMin || 0)
     } else if (msg.t === 'quakes') {
       const next = []
       for (const q of msg.quakes || []) {
@@ -661,6 +703,10 @@ function connect() {
       showNarration(msg)
     } else if (msg.t === 'reveal') {
       reveal.start({ lat: msg.lat, lon: msg.lon, mcg: msg.mcg, sig: msg.sig }, performance.now())
+    } else if (msg.t === 'presence') {
+      viewers = msg.viewers || []
+      const wel = el('watchers')
+      if (wel) { wel.hidden = viewers.length === 0; wel.textContent = `👁 ${viewers.length} also watching` }
     }
   }
 

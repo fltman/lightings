@@ -42,6 +42,7 @@ export class Globe {
     this.fx = null            // StrikeFx, set by main
     this.quakes = []          // set by main each frame
     this.fires = []           // set by main each frame
+    this.aurora = []          // set by main each frame
 
     this.rotLon = 0
     this.rotLat = -12         // slight northern tilt
@@ -153,6 +154,27 @@ export class Globe {
       ctx.strokeStyle = 'rgba(255,170,90,0.18)'
       ctx.lineWidth = 1
       ctx.stroke()
+    }
+
+    // Aurora (far-side culled) — green glow over the poles
+    if (this.aurora.length) {
+      const toR = Math.PI / 180
+      const clat = -this.rotLat * toR, clon = -this.rotLon
+      const sinC = Math.sin(clat), cosC = Math.cos(clat)
+      ctx.globalCompositeOperation = 'lighter'
+      for (const a of this.aurora) {
+        const cosd = sinC * Math.sin(a.lat * toR) + cosC * Math.cos(a.lat * toR) * Math.cos((a.lon - clon) * toR)
+        if (cosd <= 0.02) continue
+        const p = this.proj([a.lon, a.lat])
+        if (!p) continue
+        const al = Math.min(1, a.val / 60) * 0.5
+        const g = ctx.createRadialGradient(p[0], p[1], 0, p[0], p[1], 7)
+        g.addColorStop(0, `rgba(120,255,180,${al})`)
+        g.addColorStop(1, 'rgba(120,255,180,0)')
+        ctx.fillStyle = g
+        ctx.beginPath(); ctx.arc(p[0], p[1], 7, 0, Math.PI * 2); ctx.fill()
+      }
+      ctx.globalCompositeOperation = 'source-over'
     }
 
     // Strikes
