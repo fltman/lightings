@@ -1,0 +1,134 @@
+[
+  {
+    "timestamp_start": "00:00",
+    "timestamp_end": "00:15",
+    "description": "The video opens with a 2D dark-mode map interface displaying real-time global lightning strikes as purple dots with positive and negative polarity symbols. The left panel shows live statistics (strikes per minute and total seen), and the right panel features a list of selectable map layers and tracking tools.",
+    "suggested_narration": "Welcome to the Lightings app dashboard. Here you can monitor real-time global lightning strikes and atmospheric events at a glance.",
+    "buttons_clicked": []
+  },
+  {
+    "timestamp_start": "00:16",
+    "timestamp_end": "00:23",
+    "description": "The user toggles the 3D globe mode. The map smoothly transitions from a flat Mercator projection to an interactive 3D globe.",
+    "suggested_narration": "Easily switch from a standard flat map to an interactive 3D globe view to get a realistic perspective of where storms are happening around the world.",
+    "buttons_clicked": [
+      "Globe view"
+    ]
+  },
+  {
+    "timestamp_start": "00:24",
+    "timestamp_end": "00:32",
+    "description": "The 3D view is toggled off, returning the map to 2D. The user zooms in on the map over central Europe.",
+    "suggested_narration": "Toggle back to the flat map and seamlessly zoom in to investigate localized storm activity.",
+    "buttons_clicked": [
+      "Globe view"
+    ]
+  },
+  {
+    "timestamp_start": "00:33",
+    "timestamp_end": "00:49",
+    "description": "The map is heavily zoomed in over Bydgoszcz, Poland. Several expanding white rings appear rapidly, representing the physical wavefront of thunder sound traveling outward from the lightning strikes.",
+    "suggested_narration": "Zooming in closer, the app visualizes the expanding acoustic wavefronts of thunder in real time, showing you exactly when and where the thunder will be heard.",
+    "buttons_clicked": []
+  },
+  {
+    "timestamp_start": "00:50",
+    "timestamp_end": "01:00",
+    "description": "A dense magenta heatmap overlay appears, showing the concentration and intensity of lightning strikes globally. The user pans across the Atlantic to North America.",
+    "suggested_narration": "Activate the heatmap layer to instantly identify the highest density storm clusters and severe weather hotspots.",
+    "buttons_clicked": [
+      "Heatmap"
+    ]
+  },
+  {
+    "timestamp_start": "01:01",
+    "timestamp_end": "01:14",
+    "description": "Orange and red concentric circles with text labels (e.g., 'M 5.2 10 km S of Kasri, Greece') populate the map, marking recent global earthquake epicenters and their magnitudes.",
+    "suggested_narration": "You aren't just limited to weather. Turn on the earthquakes layer to monitor recent seismic activity worldwide, complete with depth and magnitude details.",
+    "buttons_clicked": [
+      "Earthquakes"
+    ]
+  },
+  {
+    "timestamp_start": "01:15",
+    "timestamp_end": "01:21",
+    "description": "A green, glowing overlay appears across the northern latitudes of the map, simulating the current visibility range of the Aurora Borealis.",
+    "suggested_narration": "Planning to catch the northern lights? The Aurora layer gives you a live look at geomagnetic activity.",
+    "buttons_clicked": [
+      "Aurora"
+    ]
+  },
+  {
+    "timestamp_start": "01:22",
+    "timestamp_end": "01:40",
+    "description": "The user turns on radar, storm cells, and flare-ups. Tracking lines with estimated arrival times (e.g., 'C19 - 26min') and indicators for sudden storm intensification ('FLARE-UP') appear on the map.",
+    "suggested_narration": "For advanced tracking, enable radar, storm cells, and flare-ups. The app automatically groups strikes into distinct cells, predicting their trajectory and highlighting rapid intensifications.",
+    "buttons_clicked": [
+      "Radar",
+      "Storm cells",
+      "Flare-ups"
+    ]
+  },
+  {
+    "timestamp_start": "01:41",
+    "timestamp_end": "02:21",
+    "description": "A high-contrast, multi-colored meteorological radar overlay (showing precipitation intensity from blue to red) fades in over central Europe. The user surveys the severe weather.",
+    "suggested_narration": "Layer live precipitation radar underneath your storm tracks to get a complete picture of a severe system's structure and heavy rainfall areas.",
+    "buttons_clicked": []
+  },
+  {
+    "timestamp_start": "02:22",
+    "timestamp_end": "02:50",
+    "description": "A text panel titled 'Storm Desk' pops up at the bottom of the screen, providing an AI-generated textual summary of current global lightning activity and highlighting the most active region.",
+    "suggested_narration": "Need a quick summary? The AI-powered Storm Desk analyzes global data to provide you with an instant, readable brief on the planet's current baseline weather activity.",
+    "buttons_clicked": [
+      "Storm Desk (AI)"
+    ]
+  },
+  {
+    "timestamp_start": "02:51",
+    "timestamp_end": "03:38",
+    "description": "The user clicks 'Ask the Planet' which opens a chat window on the left. The user types 'the largest storm in europ?'. The AI processes the query and returns a structured breakdown of the most severe storm currently active near Cologne, Germany.",
+    "suggested_narration": "You can even interact with the data naturally. Just click 'Ask the Planet' and type a question. Curious about the biggest storm in Europe? The AI instantly fetches the live telemetry and pinpoints its exact location and intensity.",
+    "buttons_clicked": [
+      "Ask the Planet"
+    ]
+  },
+  {
+    "timestamp_start": "03:39",
+    "timestamp_end": "04:30",
+    "description": "The user types a second query in the chat: 'he largest earthquake?'. The AI responds with details about a recent magnitude 5.8 earthquake near Petropavlovsk-Kamchatskiy, Russia.",
+    "suggested_narration": "The AI assistant cross-references all available layers. Ask it about the latest major seismic event, and it will give you the precise magnitude, location, and depth.",
+    "buttons_clicked": []
+  },
+  {
+    "timestamp_start": "04:31",
+    "timestamp_end": "05:03",
+    "description": "After reading the earthquake data, the user pans the map significantly southward and westward across the Pacific Ocean, revealing lightning strikes and storm activity scattered across South America, Africa, and the surrounding oceans.",
+    "suggested_narration": "From local events to global phenomena, you can seamlessly pan across the continents to see exactly how weather patterns are behaving across different hemispheres in real time.",
+    "buttons_clicked": []
+  },
+  {
+    "timestamp_start": "05:04",
+    "timestamp_end": "05:59",
+    "description": "The user centers the map back over Europe and North Africa, keeping the radar and storm cell layers active. The screen is filled with detailed, multi-colored tracking lines for various storm cells (e.g., C27, C44, C41) showing their directions and estimated times. A specific 'FLARE-UP' warning is visible near the top.",
+    "suggested_narration": "Bringing our focus back to Europe, notice the sheer density of the storm tracking data. The app continuously updates the trajectory of dozens of storm cells simultaneously, giving you a predictive edge on severe weather.",
+    "buttons_clicked": []
+  },
+  {
+    "timestamp_start": "06:00",
+    "timestamp_end": "06:33",
+    "description": "The view remains centered on the high-density storm tracks over Europe. The expanding white rings of thunder wavefronts continue to animate over the active strikes. The user moves their cursor toward the left panel and clicks the 'CLEAR' button within the 'Ask the Planet' chat interface to reset the AI assistant.",
+    "suggested_narration": "Once you have the information you need, simply clear your AI workspace. The map remains fully active, tracking every strike and expanding thunder wavefront as it happens.",
+    "buttons_clicked": [
+      "CLEAR (Ask the Planet)"
+    ]
+  },
+  {
+    "timestamp_start": "06:34",
+    "timestamp_end": "06:40",
+    "description": "The user rapidly zooms out from the close-up of Europe to a macro, global view of the entire Earth. The 2D map shows a worldwide snapshot of white lightning dots and their accompanying thunder rings as the demo concludes.",
+    "suggested_narration": "Whether you are tracking a localized downpour or monitoring the entire planet's atmospheric pulse, Lightings puts the world's weather right at your fingertips.",
+    "buttons_clicked": []
+  }
+]

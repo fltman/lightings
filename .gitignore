@@ -4,3 +4,6 @@ dist/
 *.log
 .env
 .env.local
+
+# Large media (exceeds GitHub 100MB limit)
+*.mp4
