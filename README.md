@@ -1,5 +1,7 @@
 # ⚡ Lightings
 
+[![Support me on Patreon](https://img.shields.io/badge/Patreon-Support%20my%20work-FF424D?style=flat&logo=patreon&logoColor=white)](https://www.patreon.com/AndersBjarby)
+
 A live global lightning map. Every strike flashes where it hit, then sends an
 expanding ring outward — the **thunder wavefront**, travelling at the real speed
 of sound (343 m/s). Lingering embers reveal where storms are massing.
